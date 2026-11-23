@@ -18,27 +18,46 @@ Review GitHub pull requests without leaving Zed. Ask the Agent panel to list PRs
 
 ## Installation
 
-### Option 1: Zed extension
+The simplest setup is a custom MCP server: no Rust toolchain needed.
 
-Open the command palette, run `zed: install dev extension` and select the `extension/` folder of this repository. The extension downloads the matching `zpr-mcp` binary from the latest GitHub release.
+### Quick start (recommended)
 
-### Option 2: Custom MCP server
+1. Install the [GitHub CLI](https://cli.github.com/) and run `gh auth login`.
+2. Download the binary for your platform from the [latest release](../../releases/latest):
 
-1. Download `zpr-mcp` for your platform from the [Releases](../../releases) page.
-2. Add it to your Zed `settings.json`:
+   | Platform | File |
+   | --- | --- |
+   | Windows | `zpr-mcp-windows-x86_64.exe` |
+   | macOS (Apple Silicon) | `zpr-mcp-macos-aarch64` |
+   | macOS (Intel) | `zpr-mcp-macos-x86_64` |
+   | Linux | `zpr-mcp-linux-x86_64` |
+
+3. macOS and Linux only: make it executable, for example `chmod +x ~/Downloads/zpr-mcp-macos-aarch64`. On macOS you may also need `xattr -d com.apple.quarantine <file>`.
+4. In Zed, open the command palette, run `zed: open settings`, and add (use the full path to the file you downloaded; on Windows use forward slashes):
 
 ```json
 {
   "context_servers": {
     "github-pr-review": {
-      "command": "/absolute/path/to/zpr-mcp",
+      "command": "C:/Users/you/Downloads/zpr-mcp-windows-x86_64.exe",
       "args": []
     }
   }
 }
 ```
 
-3. Open the Agent panel and make sure the server is enabled.
+5. Open the Agent panel, open its settings and check that `github-pr-review` is enabled (green dot).
+6. Test it: open a GitHub project and ask "List the open pull requests."
+
+### As a Zed dev extension
+
+Requires Rust installed through [rustup](https://rustup.rs/). Clone this repository, run `zed: install dev extension` and select the `extension/` folder. The extension downloads the matching binary from the latest release. In the setup dialog, click **Configure Server**.
+
+### Troubleshooting
+
+- Server not green: run `zed: open log` and read the last errors.
+- "gh failed" errors: run `gh auth status` in a terminal.
+- "Could not detect the repository": open a folder that is a GitHub repository, or ask for it by name (`owner/name`).
 
 ## Usage
 
