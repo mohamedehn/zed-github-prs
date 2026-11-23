@@ -56,6 +56,21 @@ impl zed::Extension for GithubPrReview {
         Self { cached_binary: None }
     }
 
+    fn context_server_configuration(
+        &mut self,
+        _context_server_id: &zed::ContextServerId,
+        _project: &zed::Project,
+    ) -> Result<Option<zed::ContextServerConfiguration>> {
+        Ok(Some(zed::ContextServerConfiguration {
+            installation_instructions: "No configuration needed. Install the \
+                [GitHub CLI](https://cli.github.com/) and run `gh auth login`, \
+                then click **Configure Server** to enable it."
+                .into(),
+            settings_schema: r#"{"type":"object","properties":{}}"#.into(),
+            default_settings: "{}".into(),
+        }))
+    }
+
     fn context_server_command(
         &mut self,
         _context_server_id: &zed::ContextServerId,
