@@ -54,12 +54,37 @@ pub fn post(endpoint: &str, body: &Value) -> Result<Value> {
     Ok(serde_json::from_str(&out).unwrap_or(Value::Null))
 }
 
+/// Runs a GraphQL query/mutation and returns its `data`.
+pub fn graphql(query: &str, variables: Value) -> Result<Value> {
+    let body = serde_json::json!({ "query": query, "variables": variables });
+    let out = run_gh(&["api", "graphql", "--input", "-"], Some(&body.to_string()))?;
+    let response: Value = serde_json::from_str(&out)?;
+    if let Some(errors) = response.get("errors") {
+        bail!("GraphQL error: {errors}");
+    }
+    Ok(response["data"].clone())
+}
+
+/// Rejects anything that is not a plain `owner/name` (it ends up in API paths).
+pub fn validate_repo(repo: &str) -> Result<()> {
+    let is_valid_part = |part: &str| {
+        !part.is_empty()
+            && part != "."
+            && part != ".."
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    };
+    if repo.split('/').count() != 2 || !repo.split('/').all(is_valid_part) {
+        bail!("repo must look like owner/name");
+    }
+    Ok(())
+}
+
 /// Resolves "owner/name": the explicit value, else the repository of the current directory.
 pub fn resolve_repo(explicit: Option<&str>) -> Result<String> {
-    if let Some(repo) = explicit {
-        if repo.split('/').count() != 2 || repo.contains(char::is_whitespace) {
-            bail!("repo must look like owner/name");
-        }
+    if let Some(repo) = explicit.filter(|repo| !repo.is_empty()) {
+        validate_repo(repo)?;
         return Ok(repo.to_owned());
     }
     let out = run_gh(
@@ -74,5 +99,7 @@ pub fn resolve_repo(explicit: Option<&str>) -> Result<String> {
         None,
     )
     .context("Could not detect the repository; pass `repo` as owner/name")?;
-    Ok(out.trim().to_owned())
+    let repo = out.trim().to_owned();
+    validate_repo(&repo)?;
+    Ok(repo)
 }

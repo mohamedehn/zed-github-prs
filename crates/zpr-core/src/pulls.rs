@@ -22,6 +22,29 @@ pub fn details(repo: &str, number: u64) -> Result<Value> {
     }))
 }
 
+/// CI check runs of the PR head commit.
+pub fn checks(repo: &str, number: u64) -> Result<Value> {
+    let pr = gh::get(&format!("repos/{repo}/pulls/{number}"))?;
+    let sha = pr["head"]["sha"].as_str().unwrap_or_default();
+    if sha.is_empty() || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        anyhow::bail!("unexpected head sha");
+    }
+    let runs = gh::get(&format!(
+        "repos/{repo}/commits/{sha}/check-runs?per_page=100"
+    ))?;
+    let runs = runs["check_runs"].as_array().cloned().unwrap_or_default();
+    Ok(Value::Array(
+        runs.iter()
+            .map(|run| {
+                json!({
+                    "name": run["name"], "status": run["status"],
+                    "conclusion": run["conclusion"], "url": run["html_url"],
+                })
+            })
+            .collect(),
+    ))
+}
+
 /// Changed files with their patch (patch is absent for binary or very large files).
 pub fn files(repo: &str, number: u64) -> Result<Vec<Value>> {
     gh::get_all(&format!("repos/{repo}/pulls/{number}/files?per_page=100"))

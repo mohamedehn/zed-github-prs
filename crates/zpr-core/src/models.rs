@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -27,10 +27,15 @@ impl PullSummary {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ReviewComment {
     pub path: String,
     pub line: u32,
+    #[serde(default = "default_side")]
     pub side: String,
     pub body: String,
+}
+
+fn default_side() -> String {
+    "RIGHT".to_owned()
 }

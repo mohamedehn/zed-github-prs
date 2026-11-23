@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PR Review</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#fff;--fg:#1f2328;--muted:#656d76;--border:#d0d7de;--panel:#f6f8fa;--add:#e6ffec;--addn:#ccffd8;--del:#ffebe9;--deln:#ffd7d5;--hunk:#ddf4ff;--accent:#0969da;--ok:#1a7f37;--bad:#cf222e;--warn:#9a6700}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--border:#30363d;--panel:#161b22;--add:#12261e;--addn:#1a4028;--del:#2d1517;--deln:#5a1e22;--hunk:#102a43;--accent:#58a6ff;--ok:#3fb950;--bad:#f85149;--warn:#d29922}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+header{display:flex;gap:16px;align-items:center;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--border)}
+header nav{display:flex;gap:14px;margin-left:auto}
+.brand{font-weight:700;color:var(--fg)}
+main{padding:20px;max-width:1600px;margin:0 auto}
+h2{margin:0 0 12px}
+.muted{color:var(--muted)}.error{color:var(--bad)}.grow{flex:1}
+input,textarea,select,button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 10px}
+textarea{width:100%;resize:vertical}
+button{cursor:pointer;background:var(--panel)}button:hover{border-color:var(--accent)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--ok);color:#fff;border-color:var(--ok)}
+button.danger{background:var(--bad);color:#fff;border-color:var(--bad)}
+button.active{border-color:var(--accent);color:var(--accent)}
+.list{border:1px solid var(--border);border-radius:6px;margin-top:12px}
+.row{display:flex;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);color:var(--fg)}
+.row:last-child{border-bottom:0}.row:hover{background:var(--panel);text-decoration:none}
+.badge{display:inline-block;margin-left:8px;padding:0 8px;border:1px solid var(--border);border-radius:12px;font-size:12px;color:var(--muted)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}.badge.bad{color:var(--bad);border-color:var(--bad)}.badge.warn{color:var(--warn);border-color:var(--warn)}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:16px 0}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none}
+.tabs button.active{border-bottom-color:var(--accent)}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.side{border:1px solid var(--border);border-radius:6px;padding:8px;position:sticky;top:8px;max-height:calc(100vh - 16px);overflow:auto}
+.file-item{display:flex;gap:6px;align-items:center;padding:3px 6px;border-radius:4px;cursor:pointer;font-size:13px;word-break:break-all}
+.file-item:hover{background:var(--panel)}.file-item.current{background:var(--hunk)}
+.file-item .name{flex:1}
+.st{font-weight:700;width:14px;text-align:center}.st.added{color:var(--ok)}.st.removed{color:var(--bad)}.st.renamed,.st.modified{color:var(--warn)}
+.plus{color:var(--ok)}.minus{color:var(--bad)}
+.file-item.viewed .name{opacity:.5;text-decoration:line-through}
+.viewed-toggle{cursor:pointer;user-select:none}
+.file{border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.file-head{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap}
+table.diff{width:100%;border-collapse:collapse;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+table.diff td{vertical-align:top;padding:0 8px}
+td.num{width:1%;min-width:48px;text-align:right;color:var(--muted);user-select:none;white-space:nowrap}
+td.num.edit{cursor:pointer}td.num.edit:hover{color:var(--accent);font-weight:700}
+td.num.edit:hover::before{content:"+ "}
+td.code{white-space:pre-wrap;word-break:break-all}
+.add{background:var(--add)}.del{background:var(--del)}.num.add{background:var(--addn)}.num.del{background:var(--deln)}
+.empty{background:var(--panel)}
+tr.hunk td{background:var(--hunk);color:var(--muted);padding:2px 8px}
+tr.thread>td,tr.composer>td{padding:8px 12px;background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border);font:14px/1.5 system-ui,sans-serif}
+.thread-box{border:1px solid var(--border);border-radius:6px;padding:8px 12px;max-width:900px}
+.thread-box.pending{border-color:var(--warn)}
+.comment{padding:6px 0;border-bottom:1px solid var(--border)}.comment:last-of-type{border-bottom:0}
+.body{white-space:pre-wrap;word-break:break-word}
+.actions{display:flex;gap:8px;margin-top:8px}
+.unanchored{margin:12px;}
+.toast{position:fixed;right:16px;bottom:16px;padding:10px 16px;background:var(--fg);color:var(--bg);border-radius:6px}
+.toast.bad{background:var(--bad);color:#fff}
+.nodiff{padding:20px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+const params = new URLSearchParams(location.search);
+const TOKEN = params.get('t') || '';
+const REPO = params.get('repo') || '';
+const app = document.getElementById('app');
+const state = { pending: [], mode: 'split' };
+try { state.mode = localStorage.getItem('zpr-mode') || 'split'; } catch (_) {}
+
+/* ---------- helpers ---------- */
+function el(tag, attrs = {}, ...kids) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value == null || value === false) continue;
+    if (key === 'class') node.className = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? '' : value);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) node.append(kid);
+  return node;
+}
+
+async function api(path, { method = 'GET', body } = {}) {
+  const sep = path.includes('?') ? '&' : '?';
+  const res = await fetch(`/api/${path}${sep}repo=${encodeURIComponent(REPO)}`, {
+    method,
+    headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
+    body: body && JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({ error: res.statusText }));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+function toast(message, bad = false) {
+  const node = el('div', { class: 'toast' + (bad ? ' bad' : '') }, message);
+  document.body.append(node);
+  setTimeout(() => node.remove(), bad ? 6000 : 2500);
+}
+const guard = (promise, ok) => promise.then(() => ok && toast(ok), e => toast(e.message, true));
+
+function shell(...content) {
+  app.replaceChildren(
+    el('header', {},
+      el('a', { class: 'brand', href: '#/' }, 'PR Review'),
+      el('span', { class: 'muted' }, REPO),
+      el('nav', {}, el('a', { href: '#/' }, 'Pull requests'), el('a', { href: '#/new' }, 'New pull request'), el('a', { href: '#/compare' }, 'Compare branches'))),
+    el('main', {}, ...content));
+}
+const loading = () => shell(el('p', { class: 'muted' }, 'Loading…'));
+const fail = e => shell(el('p', { class: 'error' }, String(e.message || e)));
+
+/* ---------- routing ---------- */
+window.addEventListener('hashchange', route);
+route();
+function route() {
+  const hash = location.hash.slice(1) || '/';
+  const pr = hash.match(/^\/pr\/(\d+)/);
+  if (pr) return showPr(Number(pr[1]));
+  if (hash.startsWith('/compare')) return showCompare(new URLSearchParams(hash.split('?')[1] || ''));
+  if (hash.startsWith('/new')) return showNew(new URLSearchParams(hash.split('?')[1] || ''));
+  showList();
+}
+
+/* ---------- pull request list ---------- */
+async function showList() {
+  loading();
+  try {
+    const pulls = await api('pulls');
+    const list = el('div', { class: 'list' });
+    const input = el('input', { placeholder: 'Filter by title, author or number', oninput: draw, size: 40 });
+    function draw() {
+      const q = input.value.toLowerCase();
+      const rows = pulls
+        .filter(p => `${p.number} ${p.title} ${p.author}`.toLowerCase().includes(q))
+        .map(p => el('a', { class: 'row', href: `#/pr/${p.number}` },
+          el('b', {}, `#${p.number}`),
+          el('span', { class: 'grow' }, p.title, p.draft && el('span', { class: 'badge' }, 'Draft')),
+          el('span', { class: 'muted' }, `${p.author} · ${p.head} → ${p.base}`)));
+      list.replaceChildren(...(rows.length ? rows : [el('p', { class: 'muted', style: 'padding:12px' }, 'No pull requests.')]));
+    }
+    draw();
+    shell(el('h2', {}, `${pulls.length} open pull requests`), input, list);
+  } catch (e) { fail(e); }
+}
+
+/* ---------- diff rendering ---------- */
+function parsePatch(patch) {
+  const rows = [];
+  let oldNo = 0, newNo = 0;
+  for (const line of (patch || '').split('\n')) {
+    if (line.startsWith('@@')) {
+      const m = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)/);
+      oldNo = m ? Number(m[1]) : 0; newNo = m ? Number(m[2]) : 0;
+      rows.push({ t: 'hunk', text: line });
+    } else if (line.startsWith('+')) rows.push({ t: 'add', n: newNo++, text: line.slice(1) });
+    else if (line.startsWith('-')) rows.push({ t: 'del', o: oldNo++, text: line.slice(1) });
+    else if (line.startsWith(' ')) rows.push({ t: 'ctx', o: oldNo++, n: newNo++, text: line.slice(1) });
+  }
+  return rows;
+}
+
+function toDisplayRows(rows, split) {
+  if (!split) return rows.map(r => (r.t === 'hunk' ? { hunk: r } : { u: r }));
+  const out = [];
+  for (let i = 0; i < rows.length;) {
+    const r = rows[i];
+    if (r.t === 'hunk') { out.push({ hunk: r }); i++; }
+    else if (r.t === 'ctx') { out.push({ l: r, r }); i++; }
+    else {
+      const dels = [], adds = [];
+      while (rows[i]?.t === 'del') dels.push(rows[i++]);
+      while (rows[i]?.t === 'add') adds.push(rows[i++]);
+      for (let k = 0; k < Math.max(dels.length, adds.length); k++) out.push({ l: dels[k], r: adds[k] });
+    }
+  }
+  return out;
+}
+
+// view = { editable, threads: [...], rerender() }
+function renderTable(file, view) {
+  const split = state.mode === 'split';
+  const cols = split ? 4 : 3;
+  const tbody = el('tbody');
+
+  const numCell = (num, side, kind) => el('td', {
+    class: `num ${kind}` + (view.editable && num != null ? ' edit' : ''),
+    title: view.editable && num != null ? 'Add a comment on this line' : null,
+    onclick: view.editable && num != null
+      ? ev => compose(ev.currentTarget.closest('tr'), cols, side, num) : null,
+  }, num ?? '');
+  const codeCell = (text, kind, marker) => el('td', { class: `code ${kind}` }, text == null ? '' : marker + text);
+
+  function compose(tr, colspan, side, line) {
+    if (tr.nextElementSibling?.classList.contains('composer')) return;
+    const area = el('textarea', { rows: 3, placeholder: 'Leave a comment' });
+    const row = el('tr', { class: 'composer' }, el('td', { colspan },
+      area,
+      el('div', { class: 'actions' },
+        el('button', { class: 'primary', onclick: () => {
+          if (!area.value.trim()) return;
+          state.pending.push({ path: file.filename, line, side, body: area.value.trim() });
+          view.rerender();
+        } }, 'Add to review'),
+        el('button', { onclick: () => row.remove() }, 'Cancel'))));
+    tr.after(row);
+    area.focus();
+  }
+
+  function attachExtras(tr, anchors) {
+    for (const [side, line] of anchors) {
+      for (const t of view.threads.filter(t => t.diffSide === side && t.line === line))
+        tr.after(el('tr', { class: 'thread' }, el('td', { colspan: cols }, threadView(t, view))));
+      state.pending.forEach((p, index) => {
+        if (p.path === file.filename && p.side === side && p.line === line)
+          tr.after(el('tr', { class: 'thread' }, el('td', { colspan: cols }, el('div', { class: 'thread-box pending' },
+            el('span', { class: 'badge warn' }, 'Pending'),
+            el('div', { class: 'body' }, p.body),
+            el('div', { class: 'actions' }, el('button', { onclick: () => { state.pending.splice(index, 1); view.rerender(); } }, 'Remove'))))));
+      });
+    }
+  }
+
+  for (const d of toDisplayRows(parsePatch(file.patch), split)) {
+    if (d.hunk) { tbody.append(el('tr', { class: 'hunk' }, el('td', { colspan: cols }, d.hunk.text))); continue; }
+    let tr, anchors = [];
+    if (!split) {
+      const r = d.u;
+      tr = el('tr', {}, numCell(r.o, 'LEFT', r.t), numCell(r.n, 'RIGHT', r.t),
+        codeCell(r.text, r.t, { add: '+', del: '-', ctx: ' ' }[r.t]));
+      if (r.o != null) anchors.push(['LEFT', r.o]);
+      if (r.n != null) anchors.push(['RIGHT', r.n]);
+    } else {
+      const kindOf = (r, want) => (!r ? 'empty' : r.t === want ? want : 'ctx');
+      const lk = kindOf(d.l, 'del'), rk = kindOf(d.r, 'add');
+      tr = el('tr', {},
+        numCell(d.l?.o, 'LEFT', lk), codeCell(d.l?.text, lk, ''),
+        numCell(d.r?.n, 'RIGHT', rk), codeCell(d.r?.text, rk, ''));
+      if (d.l?.o != null) anchors.push(['LEFT', d.l.o]);
+      if (d.r?.n != null) anchors.push(['RIGHT', d.r.n]);
+    }
+    tbody.append(tr);
+    // Extras are inserted after the row; build them in a fragment-like order.
+    attachExtras(tr, anchors.reverse());
+  }
+  return el('table', { class: 'diff' }, tbody);
+}
+
+function threadView(t, view) {
+  const comments = t.comments.nodes;
+  const reply = el('textarea', { rows: 2, placeholder: 'Reply…' });
+  const box = el('div', { class: 'thread-box' },
+    t.isOutdated && el('span', { class: 'badge warn' }, 'Outdated'),
+    ...comments.map(c => el('div', { class: 'comment' },
+      el('b', {}, c.author?.login || 'ghost'), ' ',
+      el('span', { class: 'muted' }, new Date(c.createdAt).toLocaleString()),
+      el('div', { class: 'body' }, c.body))),
+    view.editable && el('div', {},
+      reply,
+      el('div', { class: 'actions' },
+        el('button', { onclick: () => {
+          if (!reply.value.trim()) return;
+          guard(api(`pulls/${view.number}/reply`, { method: 'POST', body: { commentId: comments[0].databaseId, body: reply.value.trim() } })
+            .then(view.reload), 'Reply sent');
+        } }, 'Reply'),
+        t.viewerCanResolve && el('button', { onclick: () =>
+          guard(api('threads/resolve', { method: 'POST', body: { id: t.id, resolved: !t.isResolved } }).then(view.reload)) },
+        t.isResolved ? 'Unresolve' : 'Resolve conversation'))));
+  if (!t.isResolved) return box;
+  return el('details', {}, el('summary', { class: 'muted' }, `Resolved conversation · ${comments[0]?.author?.login || ''}`), box);
+}
+
+/* ---------- files pane (sidebar + diff), shared by PRs and comparisons ---------- */
+// ctx = { editable, number, threadsOf(path), viewed: Map|null, onViewed(path, bool), reload() }
+function filesPane(files, ctx) {
+  let current = files[0]?.filename;
+  let filter = '';
+  const side = el('div', { class: 'side' });
+  const main = el('div');
+
+  function setViewed(path, value) {
+    ctx.viewed.set(path, value);
+    draw();
+    Promise.resolve(ctx.onViewed(path, value)).catch(e => {
+      ctx.viewed.set(path, !value);
+      draw();
+      toast(e.message, true);
+    });
+  }
+
+  function draw() {
+    const visible = files.filter(f => f.filename.toLowerCase().includes(filter));
+    const viewedCount = files.filter(f => ctx.viewed?.get(f.filename)).length;
+    side.replaceChildren(
+      el('input', { placeholder: 'Filter files', value: filter, style: 'width:100%;margin-bottom:6px',
+        oninput: ev => { filter = ev.target.value.toLowerCase(); const pos = ev.target.selectionStart; draw(); const input = side.querySelector('input'); input.focus(); input.setSelectionRange(pos, pos); } }),
+      ctx.viewed && el('div', { class: 'muted', style: 'margin-bottom:6px' }, `${viewedCount} / ${files.length} files viewed`),
+      ...visible.map(f => el('div', { class: 'file-item' + (f.filename === current ? ' current' : '') + (ctx.viewed?.get(f.filename) ? ' viewed' : ''), onclick: () => { current = f.filename; draw(); } },
+        ctx.viewed && el('input', { type: 'checkbox', title: 'Mark as viewed', checked: ctx.viewed.get(f.filename) === true,
+          onclick: ev => ev.stopPropagation(),
+          onchange: ev => setViewed(f.filename, ev.target.checked) }),
+        el('span', { class: `st ${f.status}` }, { added: 'A', removed: 'D', renamed: 'R' }[f.status] || 'M'),
+        el('span', { class: 'name' }, f.filename),
+        el('span', { class: 'plus' }, `+${f.additions}`), el('span', { class: 'minus' }, `-${f.deletions}`))));
+    const file = files.find(f => f.filename === current);
+    main.replaceChildren(file ? renderFile(file) : el('p', { class: 'muted' }, 'No files.'));
+  }
+
+  function renderFile(file) {
+    const threads = ctx.threadsOf(file.filename);
+    const view = {
+      editable: ctx.editable, threads: threads.filter(t => t.line != null), number: ctx.number, reload: ctx.reload,
+      rerender: () => { draw(); ctx.onPendingChange?.(); },
+    };
+    const outdated = threads.filter(t => t.line == null);
+    const modeButton = (mode, label) => el('button', { class: state.mode === mode ? 'active' : '', onclick: () => {
+      state.mode = mode; try { localStorage.setItem('zpr-mode', mode); } catch (_) {} draw(); } }, label);
+    return el('div', { class: 'file' },
+      el('div', { class: 'file-head' },
+        el('b', {}, file.previous_filename ? `${file.previous_filename} → ${file.filename}` : file.filename),
+        el('span', { class: 'plus' }, `+${file.additions}`), el('span', { class: 'minus' }, `-${file.deletions}`),
+        el('span', { class: 'grow' }),
+        modeButton('unified', 'Unified'), modeButton('split', 'Split'),
+        el('button', { title: 'Opens your local copy of this file', onclick: () =>
+          guard(api('open', { method: 'POST', body: { path: file.filename, line: 1 } }), 'Opened in Zed') }, 'Open in Zed'),
+        ctx.viewed && el('label', { class: 'viewed-toggle' },
+          el('input', { type: 'checkbox', checked: ctx.viewed.get(file.filename) === true,
+            onchange: ev => setViewed(file.filename, ev.target.checked) }), ' Viewed')),
+      outdated.length > 0 && el('div', { class: 'unanchored' }, el('div', { class: 'muted' }, 'Outdated conversations'),
+        ...outdated.map(t => threadView(t, view))),
+      file.patch ? renderTable(file, view) : el('div', { class: 'nodiff' }, 'No textual diff (binary, renamed without changes, or too large).'));
+  }
+
+  draw();
+  return el('div', { class: 'layout' }, side, main);
+}
+
+/* ---------- pull request view ---------- */
+async function showPr(number) {
+  loading();
+  state.pending = [];
+  try {
+    const [pr, review, checks] = await Promise.all([
+      api(`pulls/${number}`),
+      api(`pulls/${number}/review`).catch(e => ({ error: e.message })),
+      api(`pulls/${number}/checks`).catch(() => []),
+    ]);
+    const d = pr.details, s = d.summary;
+    const reviewState = { value: review };
+    const viewed = new Map();
+    const syncViewed = () => {
+      viewed.clear();
+      for (const f of reviewState.value.files?.nodes || []) viewed.set(f.path, f.viewerViewedState === 'VIEWED');
+    };
+    syncViewed();
+
+    const summary = el('textarea', { rows: 2, placeholder: 'Review summary (required for "Request changes")' });
+    const pendingLabel = el('span', { class: 'muted' });
+    const content = el('div');
+    let tab = 'files';
+
+    const reload = async () => {
+      reviewState.value = await api(`pulls/${number}/review`);
+      syncViewed();
+      drawTab();
+    };
+    const submit = event => {
+      const label = { APPROVE: 'Approve', REQUEST_CHANGES: 'Request changes on', COMMENT: 'Comment on' }[event];
+      if (event !== 'COMMENT' && !confirm(`${label} #${number} on GitHub?`)) return;
+      guard(api(`pulls/${number}/review`, { method: 'POST', body: { event, body: summary.value, comments: state.pending } })
+        .then(() => { state.pending = []; summary.value = ''; return reload(); }), 'Review submitted');
+    };
+
+    const ctx = {
+      editable: !review.error, number, reload, viewed,
+      onPendingChange: () => { pendingLabel.textContent = `${state.pending.length} pending comment(s)`; },
+      threadsOf: path => (reviewState.value.reviewThreads?.nodes || []).filter(t => t.path === path),
+      onViewed: (path, isViewed) =>
+        api(`pulls/${number}/viewed`, { method: 'POST', body: { prId: reviewState.value.id, path, viewed: isViewed } }),
+    };
+
+    function drawTab() {
+      pendingLabel.textContent = `${state.pending.length} pending comment(s)`;
+      if (tab === 'files') content.replaceChildren(filesPane(pr.files, ctx));
+      else if (tab === 'description') content.replaceChildren(el('div', { class: 'body' }, d.body || 'No description.'));
+      else content.replaceChildren(...(checks.length ? checks.map(c => el('div', { class: 'row' },
+        el('span', { class: 'badge ' + (c.conclusion === 'success' ? 'ok' : c.conclusion ? 'bad' : 'warn') }, c.conclusion || c.status),
+        el('a', { class: 'grow', href: c.url, target: '_blank', rel: 'noreferrer' }, c.name))) : [el('p', { class: 'muted' }, 'No checks.')]));
+    }
+    const tabButton = (id, label) => el('button', { class: tab === id ? 'active' : '', onclick: ev => {
+      tab = id; for (const b of ev.target.parentElement.children) b.classList.toggle('active', b === ev.target); drawTab(); } }, label);
+
+    shell(
+      el('h2', {}, s.title, el('span', { class: 'muted' }, ` #${s.number}`)),
+      el('div', { class: 'bar' },
+        el('span', { class: 'badge ' + (d.state === 'open' ? 'ok' : '') }, d.state),
+        s.draft && el('span', { class: 'badge' }, 'Draft'),
+        el('span', { class: 'muted' }, `${s.author} · ${s.head} → ${s.base}`),
+        el('span', { class: 'plus' }, `+${d.additions}`), el('span', { class: 'minus' }, `-${d.deletions}`),
+        el('span', { class: 'muted' }, `${d.changed_files} files`),
+        d.mergeable_state && el('span', { class: 'badge' }, d.mergeable_state),
+        el('a', { href: s.url, target: '_blank', rel: 'noreferrer' }, 'Open on GitHub')),
+      review.error && el('p', { class: 'error' }, `Review threads unavailable: ${review.error}`),
+      el('div', {}, summary,
+        el('div', { class: 'actions' },
+          el('button', { onclick: () => submit('COMMENT') }, 'Comment'),
+          el('button', { class: 'primary', onclick: () => submit('APPROVE') }, 'Approve'),
+          el('button', { class: 'danger', onclick: () => submit('REQUEST_CHANGES') }, 'Request changes'),
+          pendingLabel)),
+      el('div', { class: 'tabs' }, tabButton('files', 'Files'), tabButton('description', 'Description'), tabButton('checks', `Checks (${checks.length})`)),
+      content);
+    drawTab();
+  } catch (e) { fail(e); }
+}
+
+/* ---------- branch comparison ---------- */
+// Comparisons have no GitHub "viewed" state, so checkmarks are kept in this browser only.
+function localViewed(key) {
+  const storageKey = `zpr-viewed:${key}`;
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (_) {}
+  const viewed = new Map(saved.map(path => [path, true]));
+  const onViewed = () => {
+    try { localStorage.setItem(storageKey, JSON.stringify([...viewed].filter(([, v]) => v).map(([path]) => path))); } catch (_) {}
+  };
+  return { viewed, onViewed };
+}
+
+async function showCompare(q) {
+  loading();
+  state.pending = [];
+  try {
+    const datalist = el('datalist', { id: 'branches' });
+    api('branches').then(b => datalist.replaceChildren(...[...new Set([...b.local, ...b.remote])].map(name => el('option', { value: name }))), () => {});
+    const base = el('input', { list: 'branches', placeholder: 'base (e.g. main)', value: q.get('base') || '' });
+    const head = el('input', { list: 'branches', placeholder: 'head (e.g. feature/x)', value: q.get('head') || '' });
+    const local = el('input', { type: 'checkbox', checked: q.get('local') === '1' });
+    const go = () => {
+      const query = new URLSearchParams({ base: base.value.trim(), head: head.value.trim() });
+      if (local.checked) query.set('local', '1');
+      location.hash = `#/compare?${query}`;
+      route();
+    };
+    const out = el('div');
+    shell(
+      el('h2', {}, 'Compare branches'),
+      el('div', { class: 'bar' }, base, el('span', { class: 'muted' }, '...'), head,
+        el('label', {}, local, ' local checkout (unpushed branches)'),
+        el('button', { class: 'primary', onclick: go }, 'Compare')),
+      datalist,
+      out);
+    if (!base.value || !head.value) return;
+    out.append(el('p', { class: 'muted' }, 'Comparing…'));
+    const query = new URLSearchParams({ base: base.value, head: head.value });
+    if (local.checked) query.set('local', '1');
+    const result = await api(`compare?${query}`);
+    out.replaceChildren(renderComparison(result, `${REPO}:${base.value}...${head.value}:${local.checked}`));
+  } catch (e) { toast(e.message, true); }
+}
+
+function renderComparison(result, viewedKey) {
+  return el('div', {},
+      el('p', {}, `${result.total_commits} commit(s), ${result.files.length} file(s) changed`,
+        result.ahead_by != null && el('span', { class: 'muted' }, ` · ahead ${result.ahead_by}, behind ${result.behind_by}`)),
+      el('details', {}, el('summary', {}, 'Commits'),
+        ...result.commits.map(c => el('div', { class: 'muted' }, `${c.sha}  ${c.message} — ${c.author}`))),
+      filesPane(result.files, { editable: false, threadsOf: () => [], ...localViewed(viewedKey) }));
+}
+
+/* ---------- create a pull request from the checked-out branch ---------- */
+async function showNew(q) {
+  loading();
+  state.pending = [];
+  try {
+    const info = await api(`new-pr?base=${encodeURIComponent(q.get('base') || '')}`);
+    if (info.existing) { location.hash = `#/pr/${info.existing}`; return; }
+
+    const title = el('input', { value: info.title, style: 'width:100%' });
+    const description = el('textarea', { rows: 10 }, info.body);
+    const base = el('input', { list: 'branches', value: info.base });
+    const draft = el('input', { type: 'checkbox' });
+    const datalist = el('datalist', { id: 'branches' });
+    api('branches').then(b => datalist.replaceChildren(...b.remote.map(name => el('option', { value: name }))), () => {});
+    const preview = el('div');
+    const pushNote = el('div', { class: 'bar' },
+      el('span', { class: 'badge warn' }, `${info.head} is not pushed to GitHub yet`),
+      el('button', { onclick: ev => {
+        ev.target.disabled = true;
+        guard(api('push', { method: 'POST', body: {} }).then(() => { pushNote.remove(); create.disabled = false; }), 'Branch pushed').finally(() => { ev.target.disabled = false; });
+      } }, `Push ${info.head} to origin`));
+    const create = el('button', { class: 'primary', disabled: !info.pushed, onclick: async () => {
+      create.disabled = true;
+      try {
+        const created = await api('pulls', { method: 'POST', body: { title: title.value, body: description.value, base: base.value.trim(), draft: draft.checked } });
+        toast(`Pull request #${created.number} created`);
+        location.hash = `#/pr/${created.number}`;
+      } catch (e) { toast(e.message, true); create.disabled = false; }
+    } }, 'Create pull request');
+
+    async function loadPreview() {
+      const target = base.value.trim();
+      if (!target) { preview.replaceChildren(); return; }
+      preview.replaceChildren(el('p', { class: 'muted' }, 'Loading changes…'));
+      try {
+        const query = new URLSearchParams({ base: target, head: info.head, local: '1' });
+        preview.replaceChildren(renderComparison(await api(`compare?${query}`), `${REPO}:${target}...${info.head}:true`));
+      } catch (e) { preview.replaceChildren(el('p', { class: 'error' }, e.message)); }
+    }
+    base.addEventListener('change', loadPreview);
+
+    shell(
+      el('h2', {}, 'Create pull request'),
+      el('div', { class: 'bar' },
+        el('span', { class: 'badge' }, info.head), el('span', { class: 'muted' }, 'into'), base,
+        el('label', {}, draft, ' Draft')),
+      datalist,
+      !info.pushed && pushNote,
+      el('div', {}, el('label', { class: 'muted' }, 'Title'), title),
+      el('div', { style: 'margin-top:8px' }, el('label', { class: 'muted' }, 'Description'), description),
+      el('div', { class: 'actions' }, create),
+      el('h3', {}, 'Changes'),
+      preview);
+    loadPreview();
+  } catch (e) { fail(e); }
+}
+</script>
+</body>
+</html>

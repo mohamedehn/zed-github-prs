@@ -1,7 +1,9 @@
 use anyhow::{bail, Context, Result};
 use serde_json::{json, Value};
-use std::io::{BufRead, Write};
-use zpr_core::{gh::resolve_repo, models::ReviewComment, pulls, reviews};
+use std::io::{BufRead, IsTerminal, Write};
+use zpr_core::{compare, gh::resolve_repo, models::ReviewComment, pulls, reviews};
+
+mod ui;
 
 const REPO_PROP: &str =
     "Repository as owner/name. Defaults to the repository of the working directory.";
@@ -59,6 +61,22 @@ fn tool_list() -> Value {
             }),
             &["number", "event"],
         ),
+        tool(
+            "open_pr_ui",
+            "Open the visual review UI (diffs, inline comments, threads, branch comparison) in the browser. \
+             With no arguments it detects the checked-out branch: it opens that branch's pull request, or the \"create pull request\" form (title, description, target branch) when there is none. \
+             Pass `target` to choose the branch the pull request goes into. \
+             Pass `number` to open a pull request, or `base` and `head` to compare two named branches.",
+            json!({
+                "repo": repo,
+                "number": number,
+                "target": { "type": "string", "description": "Branch the pull request goes into (e.g. dev); default is the repository's default branch" },
+                "base": { "type": "string", "description": "Base branch for a comparison" },
+                "head": { "type": "string", "description": "Head branch for a comparison" },
+                "local": { "type": "boolean", "description": "Compare with the local git checkout (unpushed branches)" }
+            }),
+            &[],
+        ),
     ])
 }
 
@@ -114,8 +132,62 @@ fn call_tool(name: &str, args: &Value) -> Result<Value> {
             )?;
             Ok(json!({ "submitted": event }))
         }
+        "open_pr_ui" => {
+            let hash = match (
+                args["number"].as_u64(),
+                args["base"].as_str(),
+                args["head"].as_str(),
+            ) {
+                (Some(number), _, _) => format!("/pr/{number}"),
+                (None, None, None) => current_branch_hash(&repo, args["target"].as_str())?,
+                (None, Some(base), Some(head)) => {
+                    let local = if args["local"].as_bool() == Some(true) {
+                        "&local=1"
+                    } else {
+                        ""
+                    };
+                    format!(
+                        "/compare?base={}&head={}{local}",
+                        compare::encode(base),
+                        compare::encode(head)
+                    )
+                }
+                _ => "/".to_owned(),
+            };
+            open_ui(&repo, &hash)
+        }
         _ => bail!("unknown tool {name}"),
     }
+}
+
+/// Page for the checked-out branch: its open pull request (into `target` when given),
+/// else the "create pull request" form. The PR list is used outside a git repo or on the
+/// default branch.
+fn current_branch_hash(repo: &str, target: Option<&str>) -> Result<String> {
+    let branch = match compare::current_branch() {
+        Ok(branch) => branch,
+        Err(_) if target.is_none() => return Ok("/".to_owned()),
+        Err(e) => return Err(e),
+    };
+    let open_prs = pulls::list_open(repo)?;
+    let existing = open_prs
+        .iter()
+        .find(|pr| pr.head == branch && target.is_none_or(|base| pr.base == base));
+    if let Some(pr) = existing {
+        return Ok(format!("/pr/{}", pr.number));
+    }
+    match target {
+        Some(base) => Ok(format!("/new?base={}", compare::encode(base))),
+        None if branch == compare::default_branch(repo)? => Ok("/".to_owned()),
+        None => Ok("/new".to_owned()),
+    }
+}
+
+fn open_ui(repo: &str, hash: &str) -> Result<Value> {
+    let server = ui::start()?;
+    let url = ui::page_url(server, repo, hash);
+    ui::open_browser(&url);
+    Ok(json!({ "opened": url }))
 }
 
 fn handle(request: &Value) -> Option<Value> {
@@ -151,7 +223,38 @@ fn handle(request: &Value) -> Option<Value> {
     })
 }
 
+/// `zpr [target-branch] [--repo owner/name]`: run only the review UI, without MCP.
+fn run_standalone_ui(args: &[String]) -> Result<()> {
+    let mut target = None;
+    let mut repo = None;
+    let mut rest = args.iter();
+    while let Some(arg) = rest.next() {
+        match arg.as_str() {
+            "--ui" => {}
+            "--repo" => repo = Some(rest.next().context("--repo needs owner/name")?.as_str()),
+            "--target" => target = Some(rest.next().context("--target needs a branch name")?),
+            name if !name.starts_with('-') => target = Some(arg),
+            flag => bail!("unknown option {flag}"),
+        }
+    }
+    let repo = resolve_repo(repo)?;
+    let hash = current_branch_hash(&repo, target.map(String::as_str))?;
+    let url = open_ui(&repo, &hash)?["opened"]
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    eprintln!("Review UI running at {url}\nPress Ctrl+C to stop.");
+    loop {
+        std::thread::park();
+    }
+}
+
 fn main() -> Result<()> {
+    let args: Vec<String> = std::env::args().collect();
+    // Zed starts the server with stdin piped and no arguments; anything else is the CLI.
+    if args.len() > 1 || std::io::stdin().is_terminal() {
+        return run_standalone_ui(&args[1..]);
+    }
     let mut out = std::io::stdout().lock();
     for line in std::io::stdin().lock().lines() {
         let Ok(request) = serde_json::from_str::<Value>(&line?) else {
