@@ -1,0 +1,8 @@
+target/
+extension/target/
+extension/*.wasm
+
+# Local-only files
+.vscode/
+deploy.md
+zed-github-prs-development.md.md

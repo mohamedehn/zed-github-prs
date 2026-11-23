@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: windows-latest, target: x86_64-pc-windows-msvc, asset: zpr-mcp-windows-x86_64.exe, bin: zpr-mcp.exe }
+          - { os: macos-latest, target: aarch64-apple-darwin, asset: zpr-mcp-macos-aarch64, bin: zpr-mcp }
+          - { os: macos-15-intel, target: x86_64-apple-darwin, asset: zpr-mcp-macos-x86_64, bin: zpr-mcp }
+          - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, asset: zpr-mcp-linux-x86_64, bin: zpr-mcp }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --release -p zpr-mcp --target ${{ matrix.target }}
+      - shell: bash
+        run: cp target/${{ matrix.target }}/release/${{ matrix.bin }} ${{ matrix.asset }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset }}

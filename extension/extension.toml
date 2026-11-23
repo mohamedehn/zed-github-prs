@@ -1,0 +1,9 @@
+id = "github-pr-review"
+name = "GitHub PR Review"
+version = "0.1.0"
+schema_version = 1
+authors = ["Mohamed <mohamed.ebarhmatin@sparte.io>"]
+description = "Browse, review and approve GitHub pull requests from Zed's Agent panel (MCP server backed by the GitHub CLI)."
+repository = "https://github.com/mohamedehn/zed-github-prs"
+
+[context_servers.zpr-mcp]
