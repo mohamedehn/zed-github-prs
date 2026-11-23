@@ -1,59 +1,116 @@
 # GitHub PR Review for Zed
 
-Review GitHub pull requests from Zed. Ask the Agent panel to list PRs, read diffs, leave inline comments, approve or request changes, or open a full visual review window with diffs, threads and branch comparison. Authentication is handled by the GitHub CLI, so there are no tokens to configure.
+Create and review GitHub pull requests from your terminal and from Zed, with a visual review window similar to the GitHub Pull Requests extension of VS Code: diffs, inline comments, review threads, "viewed" checkboxes, branch comparison. Authentication is handled by the GitHub CLI, so there are no tokens to configure.
 
-## Features
+Two ways to use it, both installed by the same program:
 
-**In the Agent panel (chat)**
-- **List and inspect** open pull requests: description, branches, stats, mergeable state.
-- **Read diffs** file by file, straight from GitHub.
-- **Review**: submit `COMMENT`, `APPROVE` or `REQUEST_CHANGES` reviews.
-- **Safe inline comments**: every comment is validated against the PR diff before it is sent, so GitHub never rejects a bad line position.
-
-**In the visual review window** (see [Visual review UI](#visual-review-ui))
-- Create a pull request from your checked-out branch: target branch, title, description (from your PR template), draft, and a preview of the changes.
-- Pull request list with search, description and CI checks.
-- Unified or side-by-side diffs with line numbers, per file.
-- Inline comments collected into a pending review, then submitted as Comment, Approve or Request changes.
-- Existing review threads: reply, resolve and unresolve.
-- Check off files as you review them ("Viewed" checkbox in the file list and in the file header, with an `N / M files viewed` counter). On a pull request it syncs with GitHub; in a branch comparison it is remembered in your browser.
-- Compare any two branches or tags, on GitHub or in your local checkout (including unpushed branches).
-- Open any file in Zed.
-
-**General**
-- **Zero credentials**: uses your existing `gh auth login` session.
-- **Cross-platform**: Windows, macOS (Apple Silicon and Intel) and Linux.
-
-## Requirements
-
-- [GitHub CLI](https://cli.github.com/), signed in with `gh auth login`
-- Zed with a model configured in the Agent panel
+- **`zpr`**, a command you run in your project: it opens the review window in your browser.
+- **The Agent panel in Zed**: ask the Agent to list, summarize, review or approve pull requests, or to open the review window.
 
 ## Installation
 
-Two steps, no Rust toolchain needed.
+You need the [GitHub CLI](https://cli.github.com/), signed in with `gh auth login`. No Rust toolchain is needed.
 
-1. Install the [GitHub CLI](https://cli.github.com/) and run `gh auth login`.
-2. Download the file for your platform from the [latest release](../../releases/latest) and run it once with `install`:
+1. Download the file for your platform from the [latest release](../../releases/latest).
+2. Install it:
 
-   | Platform | File | Command (in the folder where you downloaded it) |
-   | --- | --- | --- |
-   | Windows | `zpr-mcp-windows-x86_64.exe` | `.\zpr-mcp-windows-x86_64.exe install` |
-   | macOS (Apple Silicon) | `zpr-mcp-macos-aarch64` | `chmod +x zpr-mcp-macos-aarch64 && xattr -d com.apple.quarantine zpr-mcp-macos-aarch64; ./zpr-mcp-macos-aarch64 install` |
-   | macOS (Intel) | `zpr-mcp-macos-x86_64` | `chmod +x zpr-mcp-macos-x86_64 && xattr -d com.apple.quarantine zpr-mcp-macos-x86_64; ./zpr-mcp-macos-x86_64 install` |
-   | Linux | `zpr-mcp-linux-x86_64` | `chmod +x zpr-mcp-linux-x86_64 && ./zpr-mcp-linux-x86_64 install` |
+   - **Windows: double-click the downloaded `.exe`.** A window shows the result; press Enter to close it. If Windows SmartScreen warns about an unknown publisher (the file is not code-signed), click **More info**, then **Run anyway**.
+   - **macOS and Linux:** raw binaries cannot be double-clicked, so run it once in a terminal, in the folder where you saved it:
 
-That's it. `install`:
+   | Platform | Command |
+   | --- | --- |
+   | macOS, Apple Silicon | `chmod +x zpr-mcp-macos-aarch64 && xattr -d com.apple.quarantine zpr-mcp-macos-aarch64; ./zpr-mcp-macos-aarch64 install` |
+   | macOS, Intel | `chmod +x zpr-mcp-macos-x86_64 && xattr -d com.apple.quarantine zpr-mcp-macos-x86_64; ./zpr-mcp-macos-x86_64 install` |
+   | Linux | `chmod +x zpr-mcp-linux-x86_64 && ./zpr-mcp-linux-x86_64 install` |
 
-- copies the program to a standard folder as `zpr` (`%LOCALAPPDATA%\zpr` on Windows, `~/.local/bin` on macOS and Linux);
-- adds that folder to your `PATH`, so `zpr` works in any new terminal;
-- registers the MCP server `github-pr-review` in your Zed `settings.json` (a backup is saved next to it as `settings.json.zpr-backup`; your comments and other settings are kept).
+`install` does three things, then you can delete the downloaded file:
 
-Then open a new terminal, and check in Zed (Agent panel, settings) that `github-pr-review` is enabled (green dot). You can delete the downloaded file.
+- copies the program as `zpr` to a standard folder (`%LOCALAPPDATA%\zpr` on Windows, `~/.local/bin` on macOS and Linux);
+- adds that folder to your `PATH`;
+- registers the MCP server `github-pr-review` in your Zed `settings.json` (a backup is saved as `settings.json.zpr-backup`; your comments and other settings are kept).
 
-**Updating:** download the new release file and run `install` again. It replaces the old program and keeps your settings.
+**Close your terminal and open a new one** (the `PATH` only updates in new terminals). In Zed, open the Agent panel settings and check that `github-pr-review` is enabled (green dot).
 
-**Manual setup** (only if `install` cannot edit your Zed settings): add this to `settings.json` (`zed: open settings`), using the full path of the program, with forward slashes on Windows:
+On Windows you can also run `.\zpr-mcp-windows-x86_64.exe install` from a terminal.
+
+**Updating:** download the new release file and install it the same way (double-click on Windows, `install` elsewhere).
+
+## Quick start
+
+In a terminal, inside a GitHub project, on the branch you are working on:
+
+```sh
+zpr          # your branch's pull request, or the "Create pull request" form
+zpr dev      # same, but the pull request goes into the branch `dev`
+```
+
+A page opens in your browser:
+
+- If your branch already has an open pull request, you land on it.
+- If not, you get the **Create pull request** form.
+- On the default branch (for example `main`), you get the list of open pull requests.
+
+## Creating a pull request
+
+1. Run `zpr` on your feature branch.
+2. Pick the target branch, edit the title and the description, tick **Draft** if needed. The title comes from your commit message (or the branch name). The description comes from your repository's template (`.github/pull_request_template.md`) if there is one, otherwise from your commit messages.
+3. Check your own changes below the form.
+4. Click **Create pull request**. The window then shows the new pull request.
+
+The **Create pull request** button is disabled, with the reason shown next to it, when:
+
+- the branch is not on GitHub yet: click **Push branch to origin** (it runs `git push --set-upstream origin <branch>`);
+- there are no commits between the target branch and yours: commit your changes first, GitHub refuses an empty pull request.
+
+## Reviewing a pull request
+
+- **Diffs**: side by side or unified, per file, with line numbers.
+- **Comment on a line**: click its line number and write the comment. Comments stay pending until you click **Comment**, **Approve** or **Request changes** at the top. Each comment is checked against the diff first, so GitHub never rejects a bad position.
+- **Threads**: reply or resolve under the line. Resolved threads are collapsed.
+- **Viewed**: tick the checkbox next to a file (or **Viewed** in its header) when you are done. Viewed files are dimmed and counted (`3 / 12 files viewed`). On a pull request this syncs with GitHub.
+- **Checks and description**: tabs next to **Files**.
+- **Open in Zed**: opens your local copy of the file (run `zpr` from the project folder with the branch checked out; the `zed` command must be in your `PATH`, or set `ZPR_ZED_BIN` to its full path).
+
+Approve and Request changes act on the real pull request and ask you to confirm.
+
+## Comparing branches
+
+Open **Compare branches** in the top bar, pick two branches, tags or commits, and click **Compare**. Tick **local checkout** to include commits you have not pushed. The checkboxes work there too (remembered in your browser).
+
+## Using the Agent panel
+
+Open a GitHub project in Zed, open the Agent panel and pick a model that supports tools. Ask in plain language; Zed may ask you to allow each tool call the first time.
+
+- "List the open pull requests."
+- "Summarize PR 124 and show the changed files."
+- "Review the patch of `src/auth.rs` in PR 124."
+- "Comment on line 42 of `src/auth.rs` in PR 124: please simplify this."
+- "Approve PR 124."
+- "Open the review UI." (same as `zpr`: your branch's pull request, or the create form)
+- "Open the review UI against `dev`." (same as `zpr dev`)
+- "Open PR 124 in the review UI."
+
+| Tool | Description |
+| --- | --- |
+| `list_pull_requests` | List open pull requests |
+| `get_pull_request` | Description, branches, stats, mergeable state |
+| `list_changed_files` | Changed files with status and +/- counts |
+| `get_file_patch` | Unified diff of one file |
+| `submit_review` | Comment, approve or request changes, with validated inline comments |
+| `open_pr_ui` | Open the review window: your branch (its PR or the create form, optionally into `target`), a PR, or two named branches |
+
+All tools accept an optional `repo` (`owner/name`); by default the repository of the working directory is used.
+
+## Troubleshooting
+
+- `zpr: command not found`: open a new terminal.
+- `zpr` shows nothing and waits: use `zpr --ui` instead.
+- The server is not green in Zed: run `zed: open log` and read the last errors.
+- "gh failed": run `gh auth status` in a terminal.
+- "Could not detect the repository": run from a folder that is a GitHub repository, or add `--repo owner/name`.
+- "branch not found locally or on origin": run `git fetch`.
+
+**Manual Zed setup**, only if `install` could not edit your settings. Add this to `settings.json` (`zed: open settings`), with the full path of the program and forward slashes on Windows:
 
 ```json
 {
@@ -66,112 +123,38 @@ Then open a new terminal, and check in Zed (Agent panel, settings) that `github-
 }
 ```
 
-### Troubleshooting
+## Good to know
 
-- `zpr: command not found`: open a new terminal (the `PATH` only updates for new ones). On Windows, Git Bash and PowerShell both need a restart of the window.
-- Server not green: run `zed: open log` and read the last errors.
-- "gh failed" errors: run `gh auth status` in a terminal.
-- "Could not detect the repository": open a folder that is a GitHub repository, or ask for it by name (`owner/name`).
-
-## Usage
-
-1. Open a GitHub repository as a project in Zed.
-2. Open the Agent panel (`agent: toggle focus`) and pick a model that supports tools.
-3. Ask in plain language. The Agent calls the PR tools for you; Zed may ask you to allow each tool call the first time.
-
-Examples:
-
-- "List the open pull requests."
-- "Summarize PR 124 and show the changed files."
-- "Review the patch of `src/auth.rs` in PR 124."
-- "Comment on line 42 of `src/auth.rs` in PR 124: please simplify this."
-- "Approve PR 124."
-- "Open PR 124 in the review UI."
-
-Approving and requesting changes act on the real pull request. Zed asks you to confirm tool calls; try them on a test repository first.
-
-## Visual review UI
-
-For a VS Code-like review experience, ask the Agent:
-
-- "Open the review UI." The checked-out branch is detected: its open pull request opens, or, if it has none, the **Create pull request** form.
-- "Open the review UI against `dev`." Same, but the pull request goes into `dev` instead of the default branch.
-- "Open PR 124 in the review UI."
-- "Compare `feature/login` with `main` in the review UI." (any two named branches, on GitHub)
-
-A local page opens in your browser. You can also start it yourself, without the Agent:
-
-```sh
-zpr                       # checked-out branch: its PR, or the create form
-zpr dev                   # same, with the pull request going into dev
-zpr dev --repo owner/name # another repository
-```
-
-On the default branch, `zpr` opens the pull request list instead.
-
-`zpr` is installed by the `install` step above. Run it from your project folder. Zed starts the same program with no arguments as its MCP server.
-
-Creating a pull request (like in VS Code):
-
-1. Check out your branch and run `zpr` (or ask the Agent to open the review UI).
-2. Choose the target branch, edit the title and description, and tick Draft if needed. The title comes from your commit message (or branch name) and the description from your repository's pull request template (`.github/pull_request_template.md`), otherwise from your commit messages.
-3. Review your own changes below the form, with the same diff view and checkboxes.
-4. If the branch is not on GitHub yet, click "Push branch to origin" (it runs `git push --set-upstream origin <branch>`).
-5. Click **Create pull request**. The window switches to the new pull request.
-
-If the branch already has an open pull request into that target, it opens that pull request instead.
-
-How to use it:
-
-- **Comment on a line**: click its line number, write the comment, then "Add to review". Comments stay pending until you click Comment, Approve or Request changes at the top.
-- **Threads**: reply or resolve directly under the line; resolved threads are collapsed.
-- **Viewed**: tick the checkbox next to a file (or "Viewed" in its header) when you are done with it. Viewed files are dimmed and counted at the top of the file list.
-- **Compare**: pick two branches (or type any tag or SHA) and click Compare. Tick "local checkout" for unpushed branches.
-- **Open in Zed**: opens your local copy of the file. Run it from the project folder, with the branch checked out. It needs the `zed` command in your PATH (or set `ZPR_ZED_BIN` to its full path).
-
-Security: the server listens on `127.0.0.1` only, on a random port, and every request needs a random token generated at startup. Nothing is exposed to your network.
-
-Limits: the file viewed state and review threads show the first 100 files and 100 threads of a PR. Very large diffs can be truncated by GitHub. Comments cover single lines, not ranges.
-
-## Tools
-
-| Tool | Description |
-| --- | --- |
-| `list_pull_requests` | List open pull requests |
-| `get_pull_request` | Description, branches, stats, mergeable state |
-| `list_changed_files` | Changed files with status and +/- counts |
-| `get_file_patch` | Unified diff of one file |
-| `submit_review` | Comment, approve or request changes, with validated inline comments |
-| `open_pr_ui` | Open the visual review UI: the checked-out branch (its PR, or the create form, optionally into `target`), a PR, or two named branches |
-
-All tools accept an optional `repo` (`owner/name`); by default the repository of the working directory is used.
+- **Security**: the review window is served on `127.0.0.1` only, on a random port, and every request needs a random token generated at startup. Nothing is exposed to your network.
+- **Limits**: the viewed state and review threads cover the first 100 files and 100 threads of a pull request. Very large diffs can be truncated by GitHub. Comments are single-line (no ranges). Pull requests from forks cannot be created yet.
+- The review window opens in your browser, not inside Zed. Zed extensions cannot add panels today.
 
 ## How it works
 
 ```
-Zed Agent panel  <-- MCP (stdio) -->  zpr-mcp  -->  gh api  -->  GitHub
-                                         |
-                                         +-- local web UI (127.0.0.1) <-- your browser
+Zed Agent panel  <-- MCP (stdio) -->  zpr  -->  gh api  -->  GitHub
+                                       |
+                                       +-- local web page (127.0.0.1) <-- your browser
 ```
 
-- `crates/zpr-core`: GitHub logic (pagination, GraphQL threads, diff line mapping, branch comparison, review submission)
-- `crates/zpr-mcp`: MCP server, plus the local review UI (`assets/index.html`, no build step)
-- `extension/`: experimental Zed extension (not required; the custom server setup above is the supported way)
+- `crates/zpr-core`: GitHub logic (pagination, GraphQL threads, diff mapping, branch comparison, pull request creation)
+- `crates/zpr-mcp`: the program: MCP server, local web page (`assets/index.html`, no build step) and `install`
+- `extension/`: experimental Zed extension (not required)
 
 ## Development
 
 ```sh
 cargo test --workspace
 cargo build --release -p zpr-mcp
-cd extension && cargo build --target wasm32-wasip2
 ```
 
-Releases: push a tag such as `v0.1.0`; the workflow attaches `zpr-mcp-<os>-<arch>` binaries.
+Release: push a tag such as `v0.3.0`; the workflow attaches the `zpr-mcp-<os>-<arch>` binaries.
 
 ## Roadmap
 
 - Syntax highlighting in diffs
 - Multi-line comments and suggested changes
+- Reviewers, labels and assignees when creating a pull request
 - Checkout and merge from the UI
 - Native Zed panel (requires a Zed fork or an upstream UI API for extensions)
 

@@ -42,9 +42,11 @@ pub fn prepare(repo: &str, base: Option<&str>) -> Result<Value> {
         .iter()
         .find(|pr| pr.head == head && pr.base == base)
         .map(|pr| pr.number);
-    let subjects = compare::local_ref(&base)
+    // `None` when the target branch is not available locally (the commits are then unknown).
+    let known_subjects = compare::local_ref(&base)
         .and_then(|base_ref| compare::commit_subjects(&base_ref, &head))
-        .unwrap_or_default();
+        .ok();
+    let subjects = known_subjects.clone().unwrap_or_default();
     let title = match subjects.as_slice() {
         [only] => only.clone(),
         _ => title_from_branch(&head),
@@ -62,7 +64,8 @@ pub fn prepare(repo: &str, base: Option<&str>) -> Result<Value> {
     Ok(json!({
         "head": head, "base": base, "default_base": default_base,
         "title": title, "body": body,
-        "pushed": pushed, "existing": existing, "commit_count": subjects.len(),
+        "pushed": pushed, "existing": existing,
+        "commit_count": known_subjects.map(|subjects| subjects.len()),
     }))
 }
 

@@ -60,6 +60,9 @@ fn copy_binary(source: &Path, target: &Path) -> Result<()> {
 
 /// Adds `dir` to the user's PATH. Returns true when a new terminal is needed to see it.
 fn add_to_path(dir: &Path) -> Result<bool> {
+    if env::var_os("ZPR_INSTALL_NO_PATH").is_some() {
+        return Ok(false); // for tests and managed machines
+    }
     if cfg!(windows) {
         let script = "$d=$env:ZPR_DIR; $p=[Environment]::GetEnvironmentVariable('Path','User'); \
             if(-not $p){$p=''}; \

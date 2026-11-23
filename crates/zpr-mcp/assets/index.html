@@ -59,7 +59,7 @@ tr.thread>td,tr.composer>td{padding:8px 12px;background:var(--bg);border-top:1px
 .thread-box.pending{border-color:var(--warn)}
 .comment{padding:6px 0;border-bottom:1px solid var(--border)}.comment:last-of-type{border-bottom:0}
 .body{white-space:pre-wrap;word-break:break-word}
-.actions{display:flex;gap:8px;margin-top:8px}
+.actions{display:flex;gap:8px;margin-top:8px;align-items:center}
 .unanchored{margin:12px;}
 .toast{position:fixed;right:16px;bottom:16px;padding:10px 16px;background:var(--fg);color:var(--bg);border-radius:6px}
 .toast.bad{background:var(--bad);color:#fff}
@@ -492,28 +492,44 @@ async function showNew(q) {
     const datalist = el('datalist', { id: 'branches' });
     api('branches').then(b => datalist.replaceChildren(...b.remote.map(name => el('option', { value: name }))), () => {});
     const preview = el('div');
+    let pushed = info.pushed;
+    let commits = info.commit_count; // null when unknown
+    const hint = el('span', { class: 'muted' });
     const pushNote = el('div', { class: 'bar' },
       el('span', { class: 'badge warn' }, `${info.head} is not pushed to GitHub yet`),
       el('button', { onclick: ev => {
         ev.target.disabled = true;
-        guard(api('push', { method: 'POST', body: {} }).then(() => { pushNote.remove(); create.disabled = false; }), 'Branch pushed').finally(() => { ev.target.disabled = false; });
+        guard(api('push', { method: 'POST', body: {} }).then(() => { pushed = true; pushNote.remove(); refreshCreate(); }), 'Branch pushed').finally(() => { ev.target.disabled = false; });
       } }, `Push ${info.head} to origin`));
-    const create = el('button', { class: 'primary', disabled: !info.pushed, onclick: async () => {
+    const create = el('button', { class: 'primary', onclick: async () => {
       create.disabled = true;
       try {
         const created = await api('pulls', { method: 'POST', body: { title: title.value, body: description.value, base: base.value.trim(), draft: draft.checked } });
         toast(`Pull request #${created.number} created`);
         location.hash = `#/pr/${created.number}`;
-      } catch (e) { toast(e.message, true); create.disabled = false; }
+      } catch (e) { toast(e.message, true); refreshCreate(); }
     } }, 'Create pull request');
+
+    // GitHub refuses a pull request for an unpushed branch or one without any commit.
+    function refreshCreate() {
+      const reason = !pushed ? 'Push the branch first.'
+        : commits === 0 ? `No commits between ${base.value.trim()} and ${info.head}: commit your changes first.` : '';
+      create.disabled = reason !== '';
+      hint.textContent = reason;
+    }
 
     async function loadPreview() {
       const target = base.value.trim();
+      commits = null;
+      refreshCreate();
       if (!target) { preview.replaceChildren(); return; }
       preview.replaceChildren(el('p', { class: 'muted' }, 'Loading changes…'));
       try {
         const query = new URLSearchParams({ base: target, head: info.head, local: '1' });
-        preview.replaceChildren(renderComparison(await api(`compare?${query}`), `${REPO}:${target}...${info.head}:true`));
+        const result = await api(`compare?${query}`);
+        commits = result.total_commits;
+        refreshCreate();
+        preview.replaceChildren(renderComparison(result, `${REPO}:${target}...${info.head}:true`));
       } catch (e) { preview.replaceChildren(el('p', { class: 'error' }, e.message)); }
     }
     base.addEventListener('change', loadPreview);
@@ -527,7 +543,7 @@ async function showNew(q) {
       !info.pushed && pushNote,
       el('div', {}, el('label', { class: 'muted' }, 'Title'), title),
       el('div', { style: 'margin-top:8px' }, el('label', { class: 'muted' }, 'Description'), description),
-      el('div', { class: 'actions' }, create),
+      el('div', { class: 'actions' }, create, hint),
       el('h3', {}, 'Changes'),
       preview);
     loadPreview();

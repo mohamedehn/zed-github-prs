@@ -250,12 +250,42 @@ fn run_standalone_ui(args: &[String]) -> Result<()> {
     }
 }
 
+/// True when Windows opened a console just for this program, i.e. it was double-clicked.
+/// (Started from a terminal there are other processes on the console; with no console it is 0.)
+#[cfg(windows)]
+fn launched_by_double_click() -> bool {
+    unsafe extern "system" {
+        fn GetConsoleProcessList(process_list: *mut u32, process_count: u32) -> u32;
+    }
+    let mut list = [0u32; 2];
+    // SAFETY: the buffer is valid for the 2 entries announced.
+    unsafe { GetConsoleProcessList(list.as_mut_ptr(), 2) == 1 }
+}
+
+#[cfg(not(windows))]
+fn launched_by_double_click() -> bool {
+    false
+}
+
+/// Install flow for a double-click: the window would close instantly, so wait for Enter.
+fn install_then_wait() -> Result<()> {
+    if let Err(e) = install::run() {
+        eprintln!("Installation failed: {e:#}");
+    }
+    println!("\nPress Enter to close this window.");
+    let _ = std::io::stdin().read_line(&mut String::new());
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("install") {
         return install::run();
     }
     // Zed starts the server with stdin piped and no arguments; anything else is the CLI.
+    if args.len() == 1 && std::io::stdin().is_terminal() && launched_by_double_click() {
+        return install_then_wait();
+    }
     if args.len() > 1 || std::io::stdin().is_terminal() {
         return run_standalone_ui(&args[1..]);
     }
