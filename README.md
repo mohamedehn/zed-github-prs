@@ -31,37 +31,44 @@ Review GitHub pull requests from Zed. Ask the Agent panel to list PRs, read diff
 
 ## Installation
 
-Setup takes two minutes and needs no Rust toolchain.
+Two steps, no Rust toolchain needed.
 
 1. Install the [GitHub CLI](https://cli.github.com/) and run `gh auth login`.
-2. Download the binary for your platform from the [latest release](../../releases/latest):
+2. Download the file for your platform from the [latest release](../../releases/latest) and run it once with `install`:
 
-   | Platform | File |
-   | --- | --- |
-   | Windows | `zpr-mcp-windows-x86_64.exe` |
-   | macOS (Apple Silicon) | `zpr-mcp-macos-aarch64` |
-   | macOS (Intel) | `zpr-mcp-macos-x86_64` |
-   | Linux | `zpr-mcp-linux-x86_64` |
+   | Platform | File | Command (in the folder where you downloaded it) |
+   | --- | --- | --- |
+   | Windows | `zpr-mcp-windows-x86_64.exe` | `.\zpr-mcp-windows-x86_64.exe install` |
+   | macOS (Apple Silicon) | `zpr-mcp-macos-aarch64` | `chmod +x zpr-mcp-macos-aarch64 && xattr -d com.apple.quarantine zpr-mcp-macos-aarch64; ./zpr-mcp-macos-aarch64 install` |
+   | macOS (Intel) | `zpr-mcp-macos-x86_64` | `chmod +x zpr-mcp-macos-x86_64 && xattr -d com.apple.quarantine zpr-mcp-macos-x86_64; ./zpr-mcp-macos-x86_64 install` |
+   | Linux | `zpr-mcp-linux-x86_64` | `chmod +x zpr-mcp-linux-x86_64 && ./zpr-mcp-linux-x86_64 install` |
 
-3. macOS and Linux only: make it executable, for example `chmod +x ~/Downloads/zpr-mcp-macos-aarch64`. On macOS you may also need `xattr -d com.apple.quarantine <file>`.
-4. In Zed, open the command palette, run `zed: open settings`, and add (use the full path to the file you downloaded; on Windows use forward slashes):
+That's it. `install`:
+
+- copies the program to a standard folder as `zpr` (`%LOCALAPPDATA%\zpr` on Windows, `~/.local/bin` on macOS and Linux);
+- adds that folder to your `PATH`, so `zpr` works in any new terminal;
+- registers the MCP server `github-pr-review` in your Zed `settings.json` (a backup is saved next to it as `settings.json.zpr-backup`; your comments and other settings are kept).
+
+Then open a new terminal, and check in Zed (Agent panel, settings) that `github-pr-review` is enabled (green dot). You can delete the downloaded file.
+
+**Updating:** download the new release file and run `install` again. It replaces the old program and keeps your settings.
+
+**Manual setup** (only if `install` cannot edit your Zed settings): add this to `settings.json` (`zed: open settings`), using the full path of the program, with forward slashes on Windows:
 
 ```json
 {
   "context_servers": {
     "github-pr-review": {
-      "command": "C:/Users/you/Downloads/zpr-mcp-windows-x86_64.exe",
+      "command": "C:/Users/you/AppData/Local/zpr/zpr.exe",
       "args": []
     }
   }
 }
 ```
 
-5. Open the Agent panel, open its settings and check that `github-pr-review` is enabled (green dot).
-6. Test it: open a GitHub project and ask "List the open pull requests."
-
 ### Troubleshooting
 
+- `zpr: command not found`: open a new terminal (the `PATH` only updates for new ones). On Windows, Git Bash and PowerShell both need a restart of the window.
 - Server not green: run `zed: open log` and read the last errors.
 - "gh failed" errors: run `gh auth status` in a terminal.
 - "Could not detect the repository": open a folder that is a GitHub repository, or ask for it by name (`owner/name`).
@@ -102,7 +109,7 @@ zpr dev --repo owner/name # another repository
 
 On the default branch, `zpr` opens the pull request list instead.
 
-`zpr` is the downloaded binary renamed (for example `zpr.exe` on Windows) and placed in a folder that is in your `PATH`. Run it from your project folder. The MCP setup in Zed does not change: Zed starts the same binary with no arguments.
+`zpr` is installed by the `install` step above. Run it from your project folder. Zed starts the same program with no arguments as its MCP server.
 
 Creating a pull request (like in VS Code):
 

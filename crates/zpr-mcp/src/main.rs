@@ -3,6 +3,7 @@ use serde_json::{json, Value};
 use std::io::{BufRead, IsTerminal, Write};
 use zpr_core::{compare, gh::resolve_repo, models::ReviewComment, pulls, reviews};
 
+mod install;
 mod ui;
 
 const REPO_PROP: &str =
@@ -251,6 +252,9 @@ fn run_standalone_ui(args: &[String]) -> Result<()> {
 
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some("install") {
+        return install::run();
+    }
     // Zed starts the server with stdin piped and no arguments; anything else is the CLI.
     if args.len() > 1 || std::io::stdin().is_terminal() {
         return run_standalone_ui(&args[1..]);
